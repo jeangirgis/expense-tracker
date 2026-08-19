@@ -8,6 +8,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import pandas as pd
+import base64
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
@@ -15,7 +16,12 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
 # ─── Configuration ──────────────────────────────────────────────────────────
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 SHEET_ID = os.environ.get('GOOGLE_SHEET_ID')
-SERVICE_ACCOUNT_FILE = os.environ.get(
+
+# Credentials can come from:
+#   1. GOOGLE_SERVICE_ACCOUNT_JSON  — full JSON string (recommended for Portainer)
+#   2. GOOGLE_SERVICE_ACCOUNT_FILE  — path to JSON file (legacy / local dev)
+SERVICE_ACCOUNT_JSON = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')        # full JSON string
+SERVICE_ACCOUNT_FILE = os.environ.get(                                        # file path fallback
     'GOOGLE_SERVICE_ACCOUNT_FILE', '/app/secrets/service-account.json'
 )
 EXPENSES_TAB = 'Expenses'
@@ -27,10 +33,22 @@ HEADERS = [
 
 # ─── Google Sheets Helper ────────────────────────────────────────────────────
 def get_sheets_service():
-    """Authenticate and return Google Sheets API service."""
-    credentials = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES
-    )
+    """Authenticate and return Google Sheets API service.
+
+    Credential priority:
+      1. GOOGLE_SERVICE_ACCOUNT_JSON env var (JSON string) — ideal for Portainer
+      2. GOOGLE_SERVICE_ACCOUNT_FILE env var (file path)   — local / legacy
+    """
+    if SERVICE_ACCOUNT_JSON:
+        # Parse JSON directly from the environment variable
+        info = json.loads(SERVICE_ACCOUNT_JSON)
+        credentials = service_account.Credentials.from_service_account_info(
+            info, scopes=SCOPES
+        )
+    else:
+        credentials = service_account.Credentials.from_service_account_file(
+            SERVICE_ACCOUNT_FILE, scopes=SCOPES
+        )
     return build('sheets', 'v4', credentials=credentials, cache_discovery=False)
 
 

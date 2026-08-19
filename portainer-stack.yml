@@ -9,11 +9,8 @@ services:
     environment:
       - FLASK_ENV=production
       - GOOGLE_SHEET_ID={{ index .Env "GOOGLE_SHEET_ID" }}
-      - GOOGLE_SERVICE_ACCOUNT_FILE=/app/secrets/service-account.json
+      - GOOGLE_SERVICE_ACCOUNT_JSON={{ index .Env "GOOGLE_SERVICE_ACCOUNT_JSON" }}
       - APP_SECRET_KEY={{ index .Env "APP_SECRET_KEY" }}
-    volumes:
-      - /var/data/expense-tracker/secrets:/app/secrets:ro
-      - /var/data/expense-tracker/uploads:/app/uploads
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
